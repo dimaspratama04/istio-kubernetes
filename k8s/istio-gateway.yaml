@@ -1,0 +1,43 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: api-gateway
+  namespace: rnd
+spec:
+  selector:
+    istio: ingressgateway # Uses default Istio ingress gateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "api.rnd-istio.local"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: api-routing
+  namespace: rnd
+spec:
+  hosts:
+    - "api.rnd-istio.local"
+  gateways:
+    - api-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api/payments
+      route:
+        - destination:
+            host: payment-service
+            port:
+              number: 8080
+    - match:
+        - uri:
+            prefix: /api/products
+      route:
+        - destination:
+            host: product-service
+            port:
+              number: 8080
