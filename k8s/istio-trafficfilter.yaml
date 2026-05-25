@@ -1,0 +1,51 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: local-ratelimit-product
+  namespace: rnd
+spec:
+  # Target the product service
+  workloadSelector:
+    labels:
+      app: product
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          # Tell Envoy to use the local rate limit filter
+          name: envoy.filters.http.local_ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+            stat_prefix: http_local_rate_limiter
+
+            # Configure the "Token Bucket" algorithm limits
+            token_bucket:
+              max_tokens: 5 # Maximum burst of requests allowed
+              tokens_per_fill: 5 # How many requests to allow per interval
+              fill_interval: 60s # The interval (reset every 60 seconds)
+
+            # Enable and enforce the filter 100% of the time
+            filter_enabled:
+              runtime_key: local_rate_limit_enabled
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            filter_enforced:
+              runtime_key: local_rate_limit_enforced
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+
+            # Add a custom header to the 429 response
+            response_headers_to_add:
+              - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                header:
+                  key: x-rate-limit-exceeded
+                  value: "true"

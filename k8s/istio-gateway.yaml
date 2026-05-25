@@ -12,7 +12,7 @@ spec:
         name: http
         protocol: HTTP
       hosts:
-        - "api.rnd-istio.local"
+        - "*"
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -21,7 +21,7 @@ metadata:
   namespace: rnd
 spec:
   hosts:
-    - "api.rnd-istio.local"
+    - "*"
   gateways:
     - api-gateway
   http:
@@ -33,6 +33,11 @@ spec:
             host: payment-service
             port:
               number: 8080
+      headers:
+        response:
+          remove:
+            - "server"
+            - "x-powered-by"
     - match:
         - uri:
             prefix: /api/products
@@ -41,3 +46,10 @@ spec:
             host: product-service
             port:
               number: 8080
+      headers:
+        response:
+          remove:
+            - "server"
+            - "x-powered-by"
+          add:
+            "x-custom-security": "enabled"
